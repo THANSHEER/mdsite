@@ -1,0 +1,19 @@
+name: mdsite
+description: Build a static website from a folder of Markdown notes
+branding:
+  icon: file-text
+  color: blue
+inputs:
+  args:
+    description: Arguments passed to the mdsite CLI
+    required: false
+    default: build
+  version:
+    description: mdsite version to run (npm dist-tag or exact version)
+    required: false
+    default: latest
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: npx --yes mdsite@${{ inputs.version }} ${{ inputs.args }}
