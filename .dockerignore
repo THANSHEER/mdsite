@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+*.tgz
+.git
+.github
+.gitignore
+public
+tmp
+*.log
+.DS_Store
+examples/*/public
+test/**/out

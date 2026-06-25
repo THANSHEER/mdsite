@@ -1,0 +1,19 @@
+name: mdgarden
+description: Build a static website from a folder of Markdown notes
+branding:
+  icon: file-text
+  color: blue
+inputs:
+  args:
+    description: Arguments passed to the mdgarden CLI
+    required: false
+    default: build
+  version:
+    description: mdgarden version to run (npm dist-tag or exact version)
+    required: false
+    default: latest
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: npx --yes mdgarden@${{ inputs.version }} ${{ inputs.args }}

@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # --ignore-scripts skips the `prepare` build; we run it explicitly below.
+      # esbuild's platform binary is an optionalDependency, so it still installs.
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Unit + integration tests
+        run: npm test
+      - name: Smoke test (build the fixtures)
+        run: |
+          node dist/cli.js build test/fixtures -o /tmp/out
+          test -f /tmp/out/index.html
+          test -f /tmp/out/mdgarden.client.js
+          test -f /tmp/out/katex/katex.min.css

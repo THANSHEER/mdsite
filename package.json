@@ -1,0 +1,83 @@
+{
+  "name": "mdgarden",
+  "version": "0.1.0",
+  "description": "Turn a folder of Markdown notes into a fast static website. A lightweight, framework-free",
+  "type": "module",
+  "bin": {
+    "mdgarden": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "themes"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc --noEmit && node esbuild.config.mjs && tsc -p tsconfig.build.json",
+    "dev": "node esbuild.config.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js",
+    "build:binary": "node scripts/build-sea.mjs",
+    "embed:assets": "node scripts/embed-assets.mjs",
+    "pack:check": "npm pack --dry-run",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "markdown",
+    "static-site-generator",
+    "ssg",
+    "obsidian",
+    "digital-garden",
+    "quartz-alternative",
+    "wikilinks"
+  ],
+  "author": "Mohammed Thanseer",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/THANSHEER/mdsite.git"
+  },
+  "homepage": "https://github.com/THANSHEER/mdsite#readme",
+  "bugs": {
+    "url": "https://github.com/THANSHEER/mdsite/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.5.1",
+    "@mdit/plugin-katex": "^0.25.2",
+    "cac": "^7.0.0",
+    "github-slugger": "^2.0.0",
+    "gray-matter": "^4.0.3",
+    "image-size": "^2.0.2",
+    "katex": "^0.17.0",
+    "markdown-it": "^14.2.0",
+    "markdown-it-anchor": "^9.2.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "picomatch": "^4.0.4",
+    "shiki": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/markdown-it-footnote": "^3.0.4",
+    "@types/node": "^25.9.3",
+    "@types/picomatch": "^4.0.3",
+    "esbuild": "^0.28.1",
+    "mermaid": "^11.15.0",
+    "minisearch": "^7.2.0",
+    "postject": "1.0.0-alpha.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
