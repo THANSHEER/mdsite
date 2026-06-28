@@ -15,8 +15,17 @@ import { buildStyles } from '../parser/theme.js';
 import { copyAsset, ensureCleanDir, writeOut } from './emit.js';
 import { getClientRuntime, getMermaidRuntime, getKatexCss, writeKatexFonts } from '../parser/assets.js';
 import { builtinPlugins } from '../plugins.js';
+import { VERSION } from '../version.js';
 import type { MdsitePlugin, PluginContext } from './plugin.js';
 import type { Page } from '../types.js';
+
+const META_FILENAME = 'mdgarden-meta.json';
+
+/** Leading integer of a version string ("2.1.0" / "v2.1.0" → 2), or null if unparseable. */
+export function majorVersion(v: string): number | null {
+  const m = /^v?(\d+)/.exec(v.trim());
+  return m ? Number(m[1]) : null;
+}
 
 export interface BuildOptions {
   cwd?: string;
@@ -80,7 +89,50 @@ export async function build(opts: BuildOptions = {}): Promise<BuildResult> {
   }
   const md = createMarkdown(config, { highlight, plugins });
 
-  for (const page of pages) renderBody(md, page, index);
+  // --- Incremental Cache Logic ---
+  const cachePath = path.join(cwd, '.mdgarden-cache.json');
+  let cache: Record<string, { mtimeMs: number; html: string; links: string[]; headings: any[]; description: string }> = {};
+  try {
+    const rawCache = await fs.readFile(cachePath, 'utf8');
+    cache = JSON.parse(rawCache);
+  } catch {}
+
+  let cachedCount = 0;
+  for (const page of pages) {
+    const cached = cache[page.sourcePath];
+    if (cached && cached.mtimeMs === page.mtimeMs && page.mtimeMs !== undefined) {
+      page.html = cached.html;
+      page.links = cached.links;
+      page.headings = cached.headings;
+      page.description = cached.description;
+      cachedCount++;
+    } else {
+      renderBody(md, page, index);
+    }
+  }
+
+  // Update Cache
+  const newCache: typeof cache = {};
+  for (const page of pages) {
+    if (page.mtimeMs !== undefined) {
+      newCache[page.sourcePath] = {
+        mtimeMs: page.mtimeMs,
+        html: page.html,
+        links: page.links,
+        headings: page.headings,
+        description: page.description,
+      };
+    }
+  }
+  try {
+    await fs.writeFile(cachePath, JSON.stringify(newCache));
+  } catch (e) {
+    console.warn('Failed to write incremental cache', e);
+  }
+  if (cachedCount > 0) {
+    console.log(`\x1b[36m[cache]\x1b[0m Skipped markdown parsing for ${cachedCount} unchanged file(s)`);
+  }
+  // ---------------------------------
 
   if (config.features.backlinks) computeBacklinks(pages, index);
 
@@ -105,6 +157,7 @@ export async function build(opts: BuildOptions = {}): Promise<BuildResult> {
     plugins,
   };
 
+  await warnOnMajorVersionJump(outDir);
   await ensureCleanDir(outDir);
 
   for (const page of pages) {
@@ -223,7 +276,36 @@ export async function build(opts: BuildOptions = {}): Promise<BuildResult> {
     }
   }
 
+  await writeOut(
+    outDir,
+    META_FILENAME,
+    JSON.stringify({ version: VERSION, builtAt: new Date().toISOString() }, null, 2),
+  );
+
   return { pageCount: pages.length, assetCount: assets.length, outDir };
+}
+
+/** Warn (non-blocking) if the previous build in outDir was made by an older major version. */
+async function warnOnMajorVersionJump(outDir: string): Promise<void> {
+  if (VERSION === 'unknown') return;
+  let previousVersion: string | undefined;
+  try {
+    const raw = await fs.readFile(path.join(outDir, META_FILENAME), 'utf8');
+    previousVersion = (JSON.parse(raw) as { version?: string }).version;
+  } catch {
+    return; // no previous build, or it predates this manifest — nothing to compare.
+  }
+  if (!previousVersion) return;
+
+  const prevMajor = majorVersion(previousVersion);
+  const curMajor = majorVersion(VERSION);
+  if (prevMajor !== null && curMajor !== null && curMajor > prevMajor) {
+    console.warn(
+      `\n⚠  This site in "${path.basename(outDir)}" was last built with mdgarden v${previousVersion}; ` +
+      `you're now on v${VERSION}.\n` +
+      `   Major version upgrades may change config or output — check the changelog before publishing.\n`,
+    );
+  }
 }
 
 async function copyKatexAssets(outDir: string): Promise<void> {

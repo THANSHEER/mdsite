@@ -1,4 +1,7 @@
 import esbuild from 'esbuild';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 const watch = process.argv.includes('--watch');
 // `--binary` builds the self-contained bundle that feeds the standalone
@@ -18,6 +21,9 @@ const nodeCommon = {
   logLevel: 'info',
   // Bundle the default theme's CSS into the JS as a string.
   loader: { '.css': 'text' },
+  // Stamped into every build (CLI, library, binary) so a generated site —
+  // and `mdgarden --version` — always know which mdgarden version made them.
+  define: { MDGARDEN_VERSION: JSON.stringify(pkg.version) },
 };
 
 // The CLI binary — gets a shebang so `mdgarden` is directly executable.

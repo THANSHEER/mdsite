@@ -1,7 +1,7 @@
 import { promises as fs, existsSync } from 'node:fs';
 import path from 'node:path';
 import * as p from '@clack/prompts';
-import { DEFAULT_CONFIG, THEME_PRESETS, findPreset } from '../core/config.js';
+import { DEFAULT_CONFIG, THEME_PRESETS, findPreset, loadConfig } from '../core/config.js';
 import type { DarkModeMode, FeatureFlags, MdsiteConfig } from '../types.js';
 
 // Default content of the .mdgardenignore file created by `mdgarden init`.
@@ -101,6 +101,32 @@ function cancelled<T>(value: T | symbol): value is symbol {
   return false;
 }
 
+/** Prompt for a theme preset + dark mode behaviour. Shared by init and redesign. */
+export async function promptThemeSelection(
+  defaultId = 'default',
+): Promise<{ themeId: string; darkMode: DarkModeMode }> {
+  const themeId = await p.select({
+    message: 'Theme',
+    options: THEME_PRESETS.map((t) => ({ value: t.id, label: t.label, hint: t.hint })),
+    initialValue: defaultId,
+  });
+  cancelled(themeId);
+
+  const darkMode = await p.select({
+    message: 'Dark mode',
+    options: [
+      { value: 'toggle', label: 'Toggle', hint: 'OS default + a manual switch' },
+      { value: 'auto', label: 'Auto', hint: 'follow the OS only' },
+      { value: 'light', label: 'Light only', hint: '' },
+      { value: 'dark', label: 'Dark only', hint: '' },
+    ],
+    initialValue: 'toggle',
+  });
+  cancelled(darkMode);
+
+  return { themeId: themeId as string, darkMode: darkMode as DarkModeMode };
+}
+
 /** Compose config from wizard answers. */
 function composeConfig(answers: {
   title: string;
@@ -148,6 +174,64 @@ async function writeConfig(cwd: string, config: MdsiteConfig): Promise<string> {
   const target = path.join(cwd, CONFIG_FILENAME);
   await fs.writeFile(target, `${JSON.stringify(config, null, 2)}\n`);
   return target;
+}
+
+export interface RedesignOptions {
+  /** Skip the interactive prompt (requires `theme`). */
+  yes?: boolean;
+  /** Theme preset id to apply non-interactively (also used by tests). */
+  theme?: string;
+}
+
+export interface RedesignResult {
+  config: MdsiteConfig;
+  configPath: string;
+}
+
+/**
+ * Re-pick a theme preset on an existing mdgarden.config.json, leaving every
+ * other config field untouched.
+ */
+export async function redesignSite(dir: string, opts: RedesignOptions = {}): Promise<RedesignResult> {
+  const root = path.resolve(process.cwd(), dir);
+  if (!(await configExists(root))) {
+    throw new Error(`No ${CONFIG_FILENAME} found in ${root} — run "mdgarden init" first.`);
+  }
+
+  const { config: current } = await loadConfig(undefined, root);
+
+  let themeId: string;
+  let darkMode: DarkModeMode;
+  if (opts.theme) {
+    if (!findPreset(opts.theme)) {
+      throw new Error(`Unknown theme "${opts.theme}". Available: ${THEME_PRESETS.map((t) => t.id).join(', ')}`);
+    }
+    themeId = opts.theme;
+    darkMode = current.theme.darkMode;
+  } else if (canPrompt(Boolean(opts.yes))) {
+    p.intro('mdgarden — redesign your site');
+    const picked = await promptThemeSelection(current.theme.name);
+    themeId = picked.themeId;
+    darkMode = picked.darkMode;
+  } else {
+    throw new Error('No theme specified — pass --theme <id> when running non-interactively.');
+  }
+
+  const preset = findPreset(themeId) ?? THEME_PRESETS[0];
+  const config: MdsiteConfig = {
+    ...current,
+    theme: {
+      ...current.theme,
+      name: preset.id,
+      darkMode,
+      colors: preset.colors,
+      fonts: preset.fonts,
+    },
+  };
+
+  const configPath = await writeConfig(root, config);
+  if (canPrompt(Boolean(opts.yes))) p.outro(`Updated ${CONFIG_FILENAME} with the "${preset.label}" theme.`);
+  return { config, configPath };
 }
 
 /** Get default configuration (used when --yes skips the wizard). */
@@ -342,24 +426,7 @@ export async function runConfigWizard(cwd: string): Promise<WizardResult> {
   });
   cancelled(logo);
 
-  const themeId = await p.select({
-    message: 'Theme',
-    options: THEME_PRESETS.map((t) => ({ value: t.id, label: t.label, hint: t.hint })),
-    initialValue: 'default',
-  });
-  cancelled(themeId);
-
-  const darkMode = await p.select({
-    message: 'Dark mode',
-    options: [
-      { value: 'toggle', label: 'Toggle', hint: 'OS default + a manual switch' },
-      { value: 'auto', label: 'Auto', hint: 'follow the OS only' },
-      { value: 'light', label: 'Light only', hint: '' },
-      { value: 'dark', label: 'Dark only', hint: '' },
-    ],
-    initialValue: 'toggle',
-  });
-  cancelled(darkMode);
+  const { themeId, darkMode } = await promptThemeSelection();
 
   // Pre-select ALL features — users deselect what they don't want (opt-out UX).
   const features = await p.multiselect({
@@ -405,8 +472,8 @@ export async function runConfigWizard(cwd: string): Promise<WizardResult> {
     baseUrl: baseUrl as string,
     author: author as string,
     logo: logo as string,
-    themeId: themeId as string,
-    darkMode: darkMode as DarkModeMode,
+    themeId,
+    darkMode,
     features: features as (keyof FeatureFlags)[],
     landingPage,
   });

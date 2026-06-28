@@ -12,9 +12,12 @@ permissions:
   packages: write # push the Docker image to ghcr.io
 
 jobs:
-  # 1) npm — the canonical channel (CLI + npx + library). Needs the NPM_TOKEN secret.
+  # 1) npm — the canonical channel (CLI + npx + library). Publishes via npm
+  #    Trusted Publisher (OIDC) — no NPM_TOKEN secret needed.
   npm:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # mint the OIDC token for npm Trusted Publishing
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,10 +25,9 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: npm ci --ignore-scripts
+      - run: npm install -g npm@latest # OIDC trusted publishing needs npm >= 11.5.1
       - run: npm run build
       - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # 2) Standalone binaries via Node SEA — one job per OS/arch (SEA can't cross-compile).
   binaries:

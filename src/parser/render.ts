@@ -3,6 +3,7 @@ import { getBasePath, makeRenderEnv, tagUrl, withBase, type SiteIndex } from './
 import { escapeAttr, escapeHtml, humanizeSlug, stripHtml, t } from '../utils.js';
 import { collectHtml, type MdsitePlugin, type PageKind, type RenderInfo } from '../core/plugin.js';
 import { buildTree, type TreeNode } from '../features/explorer.js';
+import { VERSION } from '../version.js';
 import type { Heading, MdsiteConfig, Page } from '../types.js';
 
 export interface RenderContext {
@@ -102,6 +103,7 @@ export function renderDocument(opts: DocumentOptions, ctx: RenderContext): strin
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(fullTitle)}</title>
 <meta name="description" content="${escapeAttr(description)}">
+<meta name="generator" content="mdgarden ${escapeAttr(VERSION)}">
 <link rel="stylesheet" href="${escapeAttr(ctx.cssHref)}">
 ${ctx.mathCssHref ? `<link rel="stylesheet" href="${escapeAttr(ctx.mathCssHref)}">` : ''}
 

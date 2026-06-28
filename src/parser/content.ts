@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 import picomatch from 'picomatch';
 import { imageSize } from 'image-size';
@@ -149,6 +150,37 @@ async function readPage(contentDir: string, rel: string, config: MdsiteConfig): 
     }
   }
 
+  let pageDate = normalizeDate(data.date);
+  let mtimeMs = 0;
+  
+  if (!pageDate) {
+    try {
+      const absPath = path.join(contentDir, rel);
+      const stdout = execSync(`git log -1 --format="%at" -- "${absPath}"`, { stdio: 'pipe', encoding: 'utf8' }).trim();
+      const stat = await fs.stat(absPath);
+      mtimeMs = stat.mtimeMs;
+      
+      if (stdout) {
+        pageDate = new Date(parseInt(stdout, 10) * 1000).toISOString().split('T')[0];
+      } else {
+        pageDate = new Date(stat.mtimeMs).toISOString().split('T')[0];
+      }
+    } catch {
+      try {
+        const absPath = path.join(contentDir, rel);
+        const stat = await fs.stat(absPath);
+        mtimeMs = stat.mtimeMs;
+        pageDate = new Date(stat.mtimeMs).toISOString().split('T')[0];
+      } catch {}
+    }
+  } else {
+    try {
+        const absPath = path.join(contentDir, rel);
+        const stat = await fs.stat(absPath);
+        mtimeMs = stat.mtimeMs;
+    } catch {}
+  }
+
   return {
     sourcePath: rel,
     slug,
@@ -159,7 +191,7 @@ async function readPage(contentDir: string, rel: string, config: MdsiteConfig): 
     frontmatter: data,
     body,
     tags: normalizeTags(data.tags),
-    date: normalizeDate(data.date),
+    date: pageDate,
     draft: false,
     lang: typeof data.lang === 'string' && data.lang.trim() ? data.lang.trim() : undefined,
     aliases,
@@ -169,6 +201,7 @@ async function readPage(contentDir: string, rel: string, config: MdsiteConfig): 
     backlinks: [],
     html: '',
     headings: [],
+    mtimeMs,
   };
 }
 

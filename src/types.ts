@@ -93,6 +93,15 @@ export interface CommentsConfig {
   theme?: string;
 }
 
+/** Static-hosting deploy target, used by `mdgarden publish`. */
+export interface DeployConfig {
+  target: 'github' | 'cloudflare';
+  /** Branch to publish to for GitHub Pages (default "gh-pages"). */
+  branch?: string;
+  /** Cloudflare Pages project name. */
+  projectName?: string;
+}
+
 export interface MdsiteConfig {
   site: SiteConfig;
   theme: ThemeConfig;
@@ -104,6 +113,8 @@ export interface MdsiteConfig {
   comments?: CommentsConfig;
   /** Overrides for built-in UI strings (i18n). Optional. */
   ui?: Record<string, string>;
+  /** Static-hosting deploy target settings (when using `mdgarden publish`). Optional. */
+  deploy?: DeployConfig;
 }
 
 /** A heading extracted during render, used for the table of contents. */
@@ -147,6 +158,8 @@ export interface Page {
   html: string;
   /** Headings for the TOC (filled during render). */
   headings: Heading[];
+  /** File modification time for incremental builds cache. */
+  mtimeMs?: number;
 }
 
 /** A non-Markdown file copied verbatim (images, PDFs, etc.). */

@@ -4,6 +4,9 @@ import { initSearch } from './search.js';
 import { initGraph } from './graph.js';
 import { initExplorer } from './explorer.js';
 import { initSidebarToggle } from './sidebar.js';
+import { initToc } from './toc.js';
+import { initPopovers } from './popover.js';
+import { initTransitions } from './transitions.js';
 
 /** Prefix a root-relative URL with the base path stored on the <html> element. */
 function withBase(url: string): string {
@@ -28,6 +31,9 @@ function start(): void {
   initGraph();
   initExplorer();
   initSidebarToggle();
+  initToc();
+  initPopovers();
+  initTransitions();
   loadMermaid();
 }
 
