@@ -20,7 +20,7 @@ export function initPopovers(): void {
     currentPopover = null;
   };
 
-  const showPopover = async (link: HTMLAnchorElement, e: MouseEvent) => {
+  const showPopover = async (link: HTMLAnchorElement) => {
     const href = link.href;
     if (!href || href.startsWith('#') || link.classList.contains('wikilink-broken')) return;
 
@@ -89,7 +89,7 @@ export function initPopovers(): void {
       if (currentPopover !== link) {
         hidePopover();
         currentPopover = link;
-        showPopover(link, e);
+        showPopover(link);
       }
     } else if (!target.closest('#md-popover')) {
       hidePopover();

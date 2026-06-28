@@ -1,6 +1,6 @@
 {
   "name": "mdgarden",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Turn a folder of Markdown notes into a fast static website. A lightweight, framework-free",
   "type": "module",
   "bin": {
