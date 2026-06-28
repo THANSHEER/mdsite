@@ -52,7 +52,7 @@
     "url": "https://github.com/THANSHEER/mdsite/issues"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.12.0"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1",
